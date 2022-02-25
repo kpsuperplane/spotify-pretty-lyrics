@@ -1,38 +1,50 @@
 import { useEffect, useState } from "react";
-import useSpotify from "../lib/spotify";
+import { useLyrics } from "../lib/lyrics";
+import useSpotify, { TSong } from "../lib/spotify";
+import Beautify from "./renderers/Beautify";
 
 export default function Main() {
-  const [data, setData] = useState<SpotifyApi.CurrentPlaybackResponse | null>(
-    null
-  );
+  const [data, setData] = useState<TSong | null>(null);
   const spotify = useSpotify();
+
+  const lyrics = useLyrics(data?.item ?? null);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      spotify.getMyCurrentPlaybackState().then((data) => {
-        if (typeof data === "object") {
-          setData(data);
+    let nextSong: number | null = null;
+    function fetch() {
+      if (nextSong != null) {
+        clearTimeout(nextSong);
+      }
+      spotify.getMyCurrentPlaybackState().then((newData) => {
+        if (typeof newData === "object" && newData.item != null) {
+          if (
+            newData.item.id !== data?.item?.id ||
+            newData.is_playing !== data?.is_playing ||
+            newData.progress_ms !== data?.progress_ms
+          ) {
+            newData.timestamp = new Date().getTime() + 700;
+            setData(newData);
+            if (newData.progress_ms != null) {
+              nextSong = setTimeout(
+                () => fetch(),
+                newData.item.duration_ms - newData.progress_ms + 1000
+              );
+            }
+          }
+        } else {
+          setData(null);
         }
       });
-    }, 5000);
-    return () => clearInterval(interval);
+    }
+    const interval = setInterval(() => fetch(), 5000);
+    fetch();
+    return () => {
+      if (nextSong != null) {
+        clearTimeout(nextSong);
+      }
+      clearInterval(interval);
+    };
   }, []);
-  return (
-    <div>
-      <p>
-        <strong>
-          Is Playing: <code>{data?.item?.name}</code>
-        </strong>
-      </p>
-      <p>
-        Is Playing: <code>{data?.is_playing ? "true" : "false"}</code>
-      </p>
-      <p>
-        Progress: <code>{data?.progress_ms}</code>
-      </p>
-      <p>
-        Timestamp: <code>{data?.timestamp}</code>
-      </p>
-      <p>Duration: <code>{data?.item?.duration_ms}</code></p>
-    </div>
-  );
+
+  return <Beautify song={data} lyrics={lyrics} />;
 }

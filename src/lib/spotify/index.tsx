@@ -12,6 +12,8 @@ type TSpotifyContext = {
   getToken: () => void;
 };
 
+export type TSong = SpotifyApi.CurrentPlaybackResponse;
+
 export const SpotifyContext = createContext<TSpotifyContext>({
   api,
   getToken,
