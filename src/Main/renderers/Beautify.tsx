@@ -3,11 +3,13 @@ import { css } from "@emotion/react";
 import * as createjs from "createjs-module";
 import ColorThief from "colorthief";
 import convert from "color-convert";
+import debounce from "debounce";
 
 import { TLyrics } from "../../lib/lyrics";
 import { TSong } from "../../lib/spotify";
 import Colour from "../util/Colour";
-import { RGB } from "color-convert/conversions";
+
+const FONT_FAMILY = "Cabin";
 
 let lastSong: TSong | null = null;
 let lyrics: TLyrics["lyrics"] | null = null;
@@ -48,32 +50,36 @@ cover.x = px(25);
 cover.regX = 0;
 cover.regY = 0;
 
-function formatLyric(lyric: string, text: createjs.Text, offset: number) {
+function fontMult() {
+  return Math.min(window.innerWidth, window.innerHeight) / 2400 + 0.8;
+}
+function formatLyric(lyric: string, text: createjs.Text) {
   text.text = lyric;
   text.textAlign = "center";
-  text.font = `75px Arial`;
+  text.font = `${px(45) * fontMult()}px ${FONT_FAMILY}`;
   text.color = "#ffffff";
+  text.lineHeight = px(45 * 1.4);
+  text.lineWidth = px(window.innerWidth * 0.8);
 }
 function getLyricPosition(lyric: string, offset: number) {
   const text = new createjs.Text();
-  formatLyric(lyric, text, offset);
-  const scale = offset === 0 ? 1 : 0.7;
+  formatLyric(lyric, text);
+  const scale = [0.5, 0.7, 1, 0.7, 0.5][offset + 2];
   const height = text.getMeasuredHeight();
   return {
     x: px(window.innerWidth) / 2,
     y:
       px(window.innerHeight) / 2 +
-      height * [0, 3, 8][Math.min(2, Math.abs(offset))] * (offset > 0 ? 1 : -1),
+      px(45) * fontMult() * [-6, -3, 0, 3, 8][offset + 2],
     regX: 0,
     regY: height / 2,
-    alpha: [1, 0.7, 0][Math.min(2, Math.abs(offset))],
+    alpha: [0, 0.4, 1, 0.7, 0][offset + 2],
     scaleX: scale,
     scaleY: scale,
   };
 }
 
-function onResize() {
-  console.log("onResize");
+function onResizeImpl() {
   (stage.canvas as HTMLCanvasElement).height = px(window.innerHeight);
   (stage.canvas as HTMLCanvasElement).width = px(window.innerWidth);
 
@@ -136,13 +142,18 @@ function onResize() {
     circle2y
   );
 
-  title.y = px(window.innerHeight - 100);
-  title.font = `${px(40)}px Arial`;
-  artist.y = px(window.innerHeight - 50);
-  artist.font = `${px(20)}px Arial`;
+  title.y = px(window.innerHeight - 90);
+  title.font = `${px(30)}px ${FONT_FAMILY}`;
+  artist.y = px(window.innerHeight - 55);
+  artist.font = `${px(20)}px ${FONT_FAMILY}`;
   cover.y = px(window.innerHeight - 93);
 
+  renderLyrics(true);
+
   stage.update();
+}
+function onResize() {
+  debounce(onResizeImpl, 500)();
 }
 
 let bgAnim = false;
@@ -151,7 +162,6 @@ let circ2Anim = false;
 let frame = 0;
 
 function init() {
-  console.log("init");
   bgAnim = circ1Anim = circ2Anim = false;
   stage = new createjs.Stage("beautify-canvas");
 
@@ -163,7 +173,7 @@ function init() {
   stage.addChild(cover);
 
   window.addEventListener("resize", onResize);
-  onResize();
+  onResizeImpl();
 
   createjs.Ticker.framerate = 120;
   createjs.Ticker.addEventListener("tick", stage);
@@ -193,7 +203,6 @@ function init() {
     .to({ scale: 1 }, 20000);
 }
 function teardown() {
-  console.log("teardown");
   window.removeEventListener("resize", onResize);
   stage.removeAllChildren();
   stage.removeAllEventListeners();
@@ -202,7 +211,7 @@ function teardown() {
 
 function updateSong(song: TSong | null) {
   if (song?.item?.id !== lastSong?.item?.id) {
-    console.log("updateSong");
+    updateLyrics(null);
     title.text = song?.item?.name ?? "";
     artist.text = song?.item?.artists?.map((a) => a.name)?.join(", ") ?? "";
 
@@ -314,14 +323,66 @@ type TLyricObjects = {
   offset: number;
 }[];
 let lyricObjects: TLyricObjects = [];
+let currentIndex = 0;
 const LYRIC_EASE = createjs.Ease.quintOut;
 const LYRIC_ANIM = 1000;
 let nextLyricTick: number | null = null;
-function renderLyrics() {
+function float(text: createjs.Text, offset: number, index: number) {
+  // make current lyric float around a bit
+  if (offset === 0 && currentIndex === index) {
+    const center = getLyricPosition(text.text, offset);
+    const scale1 = Math.random() * 0.2 - 0.1;
+    const scale2 = Math.random() * 0.2 - 0.1;
+    createjs.Tween.get(text, { loop: -1 })
+      .to(
+        {
+          x: center.x + px(Math.random() * 20 - 10),
+          y: center.y + px(Math.random() * 20 - 10),
+          scaleX: center.scaleX + scale1,
+          scaleY: center.scaleY + scale1,
+        },
+        3000,
+        createjs.Ease.cubicInOut
+      )
+      .to(
+        {
+          x: center.x + px(Math.random() * 20 - 10),
+          y: center.y + px(Math.random() * 20 - 10),
+          scaleX: center.scaleX + scale2,
+          scaleY: center.scaleY + scale2,
+        },
+        3000,
+        createjs.Ease.cubicInOut
+      )
+      .to(
+        {
+          x: center.x,
+          y: center.y,
+          scaleX: center.scaleX,
+          scaleY: center.scaleY,
+        },
+        1500,
+        createjs.Ease.cubicInOut
+      );
+  }
+}
+function renderLyrics(forceUpdate: boolean = false) {
+  const anim = forceUpdate ? 1 : LYRIC_ANIM;
+
   if (nextLyricTick != null) {
     clearTimeout(nextLyricTick);
   }
-  if (lyrics == null || lastSong?.progress_ms == null) return;
+  if (lyrics == null || lastSong?.progress_ms == null) {
+    for (const lyric of lyricObjects) {
+      createjs.Tween.get(lyric.text, { override: true })
+        .to({ alpha: 0 }, anim, LYRIC_EASE)
+        .call(() => {
+          stage.removeChild(lyric.text);
+        });
+    }
+    lyricObjects = [];
+    return;
+  }
 
   const currentTime =
     (lastSong.is_playing
@@ -335,6 +396,7 @@ function renderLyrics() {
       break;
     }
   }
+  currentIndex = lyricIndex;
 
   if (lyricIndex < lyrics.length - 1) {
     nextLyricTick = setTimeout(
@@ -343,24 +405,22 @@ function renderLyrics() {
     );
   }
 
-  console.log(lyrics[lyricIndex]);
-
   const newLyrics: TLyricObjects = [];
   const timeline = new (createjs.Timeline as any)() as createjs.Timeline;
   for (let offset = -1; offset <= 1; offset++) {
     const idx = offset + lyricIndex;
+    let currentObj: TLyricObjects[0];
     if (idx >= 0 && idx < lyrics.length) {
       const lyric = lyrics[idx];
       const obj = lyricObjects.find((obj) => obj.timestamp === lyric.timestamp);
       if (obj != null) {
+        currentObj = obj;
         // need to update positioning
-        if (obj.offset !== offset) {
+        if (obj.offset !== offset || forceUpdate) {
           timeline.addTween(
-            createjs.Tween.get(obj.text, { override: true, paused: true }).to(
-              getLyricPosition(obj.text.text, offset),
-              LYRIC_ANIM,
-              LYRIC_EASE
-            )
+            createjs.Tween.get(obj.text, { override: true, paused: true })
+              .to(getLyricPosition(obj.text.text, offset), anim, LYRIC_EASE)
+              .call(() => float(obj.text, offset, lyricIndex))
           );
           obj.offset = offset;
         }
@@ -369,7 +429,7 @@ function renderLyrics() {
         const content =
           lyric.content.trim() === "" ? "..." : lyric.content.trim();
         const text = new createjs.Text();
-        formatLyric(content, text, offset + 1);
+        formatLyric(content, text);
         const style = getLyricPosition(content, offset + 1);
         text.x = style.x;
         text.y = style.y;
@@ -380,28 +440,24 @@ function renderLyrics() {
         text.alpha = style.alpha;
         stage.addChild(text);
         timeline.addTween(
-          createjs.Tween.get(text, { override: true, paused: true }).to(
-            getLyricPosition(content, offset),
-            LYRIC_ANIM,
-            LYRIC_EASE
-          )
+          createjs.Tween.get(text, { override: true, paused: true })
+            .to(getLyricPosition(content, offset), anim, LYRIC_EASE)
+            .call(() => float(text, offset, lyricIndex))
         );
-        newLyrics.push({ timestamp: lyric.timestamp, offset, text });
+        currentObj = { timestamp: lyric.timestamp, offset, text };
+        newLyrics.push(currentObj);
       }
     }
   }
   for (const obj of lyricObjects) {
     if (!newLyrics.some((newObj) => newObj.timestamp === obj.timestamp)) {
-      const newOffset =
-        lyrics.findIndex((lyric) => lyric.timestamp === obj.timestamp) -
-        lyricIndex;
+      const index = lyrics.findIndex(
+        (lyric) => lyric.timestamp === obj.timestamp
+      );
+      const newOffset = index === -1 ? -2 : index - lyricIndex;
       timeline.addTween(
-        createjs.Tween.get(obj, { override: true, paused: true })
-          .to(
-            getLyricPosition(obj.text.text, newOffset),
-            LYRIC_ANIM,
-            LYRIC_EASE
-          )
+        createjs.Tween.get(obj.text, { override: true, paused: true })
+          .to(getLyricPosition(obj.text.text, newOffset), anim, LYRIC_EASE)
           .call(() => {
             stage.removeChild(obj.text);
           })
@@ -410,7 +466,6 @@ function renderLyrics() {
   }
   timeline.gotoAndPlay(0);
   lyricObjects = newLyrics;
-  console.log(lyricObjects);
 }
 
 function updateLyrics(newLyrics: TLyrics | null) {

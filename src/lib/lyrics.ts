@@ -37,7 +37,9 @@ export function useLyrics(
     if (song == null) return;
     axios.get("/api/lyrics", { params: { song } }).then((response) => {
       const data = response.data as TLyrics;
-      data.lyrics = data.lyrics.filter((l) => !l.content.includes(":"));
+      data.lyrics = data.lyrics.filter(
+        (l) => !l.content.includes(":") && !l.content.includes("：") && !l.content.includes("/")
+      );
       setCache(data);
     });
   }, [song]);

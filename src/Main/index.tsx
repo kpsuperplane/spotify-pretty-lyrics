@@ -15,6 +15,7 @@ export default function Main() {
       if (nextSong != null) {
         clearTimeout(nextSong);
       }
+      const startFetch = new Date().getTime();
       spotify.getMyCurrentPlaybackState().then((newData) => {
         if (typeof newData === "object" && newData.item != null) {
           if (
@@ -22,7 +23,7 @@ export default function Main() {
             newData.is_playing !== data?.is_playing ||
             newData.progress_ms !== data?.progress_ms
           ) {
-            newData.timestamp = new Date().getTime() + 700;
+            newData.timestamp = (new Date().getTime() + startFetch) / 2;
             setData(newData);
             if (newData.progress_ms != null) {
               nextSong = setTimeout(
