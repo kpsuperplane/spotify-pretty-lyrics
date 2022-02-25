@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { css } from "@emotion/react";
 import * as createjs from "createjs-module";
 import ColorThief from "colorthief";
@@ -15,6 +15,9 @@ let lastSong: TSong | null = null;
 let lyrics: TLyrics["lyrics"] | null = null;
 
 let stage: createjs.Stage;
+
+const video = document.createElement("video");
+video.muted = true;
 
 const PX_RATIO = (function () {
   var ctx = document.createElement("canvas").getContext("2d") as any,
@@ -82,6 +85,8 @@ function getLyricPosition(lyric: string, offset: number) {
 function onResizeImpl() {
   (stage.canvas as HTMLCanvasElement).height = px(window.innerHeight);
   (stage.canvas as HTMLCanvasElement).width = px(window.innerWidth);
+
+  video.srcObject = (stage.canvas as HTMLCanvasElement).captureStream(60);
 
   background.graphics
     .clear()
@@ -486,16 +491,44 @@ export default function Beautify({
     init();
     return () => teardown();
   }, []);
+  const icon = new URL("pip.svg", import.meta.url);
+  const openPIP = useCallback(() => {
+    video.play();
+    video.requestPictureInPicture();
+  }, []);
   return (
-    <canvas
-      css={css`
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-      `}
-      id="beautify-canvas"
-    ></canvas>
+    <>
+      <canvas
+        css={css`
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+        `}
+        id="beautify-canvas"
+      />
+      <button
+        onClick={openPIP}
+        css={css`
+          display: block;
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background: transparent;
+          border-style: none;
+          cursor: pointer;
+          filter: invert(1);
+        `}
+      >
+        <img
+          css={css`
+            width: 24px;
+            height: 24px;
+          `}
+          src={icon.toString()}
+        />
+      </button>
+    </>
   );
 }
