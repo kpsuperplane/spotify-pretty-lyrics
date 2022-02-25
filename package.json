@@ -2,6 +2,7 @@
   "name": "spotify-pretty-lyrics-web",
   "version": "0.1.0",
   "browserslist": "> 0.5%, last 2 versions, not dead",
+  "source": "index.html",
   "scripts": {
     "start": "parcel index.html",
     "build": "parcel build index.html"

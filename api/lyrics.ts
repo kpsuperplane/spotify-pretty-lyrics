@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import axios from "axios";
+import { Lrc } from 'lrc-kit';
 
 export default async (req: VercelRequest, res: VercelResponse) => {
   const { song } = req.query;
@@ -15,7 +16,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     );
     const songs = songs_res?.data?.data?.song?.list;
     if (songs == null || songs.length === 0) {
-      res.status(404).send("No songs found");
+      res.setHeader('Cache-Control', `max-age=${60*60*24}, public`).status(404).send("No songs found");
     } else {
       const songmid = songs[0].songmid;
       const lyrics_res = await axios.get(
@@ -32,10 +33,10 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       );
       const lyrics = lyrics_res?.data?.lyric;
       if (lyrics == null) {
-        res.status(404).send("No lyrics found for song");
+        res.setHeader('Cache-Control', `max-age=${60*60*24}, public`).status(404).send("No lyrics found for song");
       } else {
         const buf = Buffer.from(lyrics, "base64");
-        res.status(200).send(buf.toString("utf-8"));
+        res.setHeader('Cache-Control', `max-age=${60*60*24*30}, public`).status(200).send(Lrc.parse(buf.toString("utf-8")));
       }
     }
   } else {
