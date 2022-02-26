@@ -51,9 +51,12 @@ export function useLyrics(
               !(
                 l.content.trim() === "" &&
                 i < arr.length - 1 &&
-                arr[i + 1].timestamp - l.timestamp < 4 
+                arr[i + 1].timestamp - l.timestamp < 4
               )
           );
+        if (data.lyrics.length > 0 && data.lyrics[0].timestamp >= 4) {
+          data.lyrics = [{ timestamp: 0, content: "" }, ...data.lyrics];
+        }
         setCache(data);
       })
       .catch((error) => {
