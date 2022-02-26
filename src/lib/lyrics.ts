@@ -35,13 +35,42 @@ export function useLyrics(
   useEffect(() => {
     setCache(null);
     if (song == null) return;
-    axios.get("/api/lyrics", { params: { song } }).then((response) => {
-      const data = response.data as TLyrics;
-      data.lyrics = data.lyrics.filter(
-        (l) => !l.content.includes(":") && !l.content.includes("：") && !l.content.includes("/")
-      );
-      setCache(data);
-    });
+    axios
+      .get("/api/lyrics", { params: { song } })
+      .then((response) => {
+        const data = response.data as TLyrics;
+        data.lyrics = data.lyrics
+          .filter(
+            (l) =>
+              !l.content.includes(":") &&
+              !l.content.includes("：") &&
+              !l.content.includes("/")
+          )
+          .filter(
+            (l, i, arr) =>
+              !(
+                l.content.trim() === "" &&
+                i < arr.length - 1 &&
+                arr[i + 1].timestamp - l.timestamp < 4 
+              )
+          );
+        setCache(data);
+      })
+      .catch((error) => {
+        setCache({
+          info: {},
+          lyrics: [
+            {
+              timestamp: 0,
+              content: "No lyrics available",
+            },
+            {
+              timestamp: 5,
+              content: "♪ ♫ ♬",
+            },
+          ],
+        });
+      });
   }, [song]);
   return cache;
 }

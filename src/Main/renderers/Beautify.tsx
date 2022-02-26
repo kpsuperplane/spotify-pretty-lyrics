@@ -9,7 +9,7 @@ import { TLyrics } from "../../lib/lyrics";
 import { TSong } from "../../lib/spotify";
 import Colour from "../util/Colour";
 
-const FONT_FAMILY = "Cabin";
+const FONT_FAMILY = "Cabin, Ma Shan Zheng";
 
 let lastSong: TSong | null = null;
 let lyrics: TLyrics["lyrics"] | null = null;
@@ -39,6 +39,11 @@ function px(n: number) {
 const background = new createjs.Shape();
 const backgroundFilter = new createjs.ColorFilter(0, 0, 0, 1);
 
+const backgroundCover = new createjs.Bitmap("");
+let backgroundCoverX = 0;
+let backgroundCoverY = 0;
+let bgMaxDimension = 0;
+
 const circle1 = new createjs.Shape();
 const circle1Filter = new createjs.ColorFilter(0, 0, 0, 0);
 const circle2 = new createjs.Shape();
@@ -54,14 +59,14 @@ cover.regX = 0;
 cover.regY = 0;
 
 function fontMult() {
-  return Math.min(window.innerWidth, window.innerHeight) / 2400 + 0.8;
+  return Math.min(window.innerWidth, window.innerHeight) / 1200 + 0.4;
 }
 function formatLyric(lyric: string, text: createjs.Text) {
   text.text = lyric;
   text.textAlign = "center";
   text.font = `${px(45) * fontMult()}px ${FONT_FAMILY}`;
   text.color = "#ffffff";
-  text.lineHeight = px(45 * 1.4);
+  text.lineHeight = px(45 * 1.4) * fontMult();
   text.lineWidth = px(window.innerWidth * 0.8);
 }
 function getLyricPosition(lyric: string, offset: number) {
@@ -73,13 +78,29 @@ function getLyricPosition(lyric: string, offset: number) {
     x: px(window.innerWidth) / 2,
     y:
       px(window.innerHeight) / 2 +
-      px(45) * fontMult() * [-6, -3, 0, 3, 8][offset + 2],
+      px(45) * 1.2 * [-6, -3, 0, 3, 8][offset + 2],
     regX: 0,
     regY: height / 2,
     alpha: [0, 0.4, 1, 0.7, 0][offset + 2],
     scaleX: scale,
     scaleY: scale,
   };
+}
+
+function clipText() {
+  const maxWidth = px(window.innerWidth) * 0.6;
+  title.text = lastSong?.item?.name ?? "";
+  const titleWidth = title.getMeasuredWidth();
+  console.log(titleWidth, maxWidth);
+  if (titleWidth > maxWidth) {
+    title.text = title.text.substring(0, Math.floor(title.text.length * maxWidth/titleWidth)) + '...';
+  }
+
+  artist.text = lastSong?.item?.artists?.map((a) => a.name)?.join(", ") ?? "";
+  const artistWidth = artist.getMeasuredWidth();
+  if (artistWidth > maxWidth) {
+    artist.text = artist.text.substring(0, Math.floor(artist.text.length * maxWidth/artistWidth)) + '...';
+  }
 }
 
 function onResizeImpl() {
@@ -94,6 +115,11 @@ function onResizeImpl() {
     .drawRect(0, 0, px(window.innerWidth), px(window.innerHeight));
   background.filters = [backgroundFilter];
   background.cache(0, 0, px(window.innerWidth), px(window.innerHeight));
+
+  bgMaxDimension = px(Math.max(window.innerWidth, window.innerHeight));
+  const maxDimension = bgMaxDimension * 1.1;
+  backgroundCoverX = (px(window.innerWidth) - maxDimension) / 2;
+  backgroundCoverY = (px(window.innerHeight) - maxDimension) / 2;
 
   const circle1Radius = px(
     Math.max(window.innerHeight, window.innerWidth) * 0.8
@@ -139,6 +165,7 @@ function onResizeImpl() {
       circle2Radius
     )
     .drawCircle(circle2x, circle2y, circle2Radius);
+    circle2.regX = circle2.regY = circle1Radius * -0.1;
   circle2.filters = [circle2Filter];
   circle2.cache(
     circle2x - circle2Radius,
@@ -154,6 +181,8 @@ function onResizeImpl() {
   cover.y = px(window.innerHeight - 93);
 
   renderLyrics(true);
+
+  clipText();
 
   stage.update();
 }
@@ -171,6 +200,7 @@ function init() {
   stage = new createjs.Stage("beautify-canvas");
 
   stage.addChild(background);
+  stage.addChild(backgroundCover);
   stage.addChild(circle1);
   stage.addChild(circle2);
   stage.addChild(title);
@@ -194,6 +224,11 @@ function init() {
     const circle2Angle = frame / (createjs.Ticker.framerate * 20);
     circle2.x = px(100) * Math.sin(Math.PI * 2 * circle2Angle);
     circle2.y = px(100) * Math.cos(Math.PI * 2 * circle2Angle);
+
+    const backgroundCoverAngle = frame / (createjs.Ticker.framerate * 60);
+    backgroundCover.x = backgroundCoverX + bgMaxDimension * 0.05 * Math.sin(Math.PI * 2 * backgroundCoverAngle);
+    backgroundCover.y = backgroundCoverY + bgMaxDimension * 0.05 * Math.cos(Math.PI * 2 * backgroundCoverAngle);
+
     frame++;
     if (frame === createjs.Ticker.framerate * 60) {
       frame = 0;
@@ -217,16 +252,20 @@ function teardown() {
 function updateSong(song: TSong | null) {
   if (song?.item?.id !== lastSong?.item?.id) {
     updateLyrics(null);
-    title.text = song?.item?.name ?? "";
-    artist.text = song?.item?.artists?.map((a) => a.name)?.join(", ") ?? "";
 
     const image = new Image();
     image.src = song?.item?.album?.images[0].url ?? "";
     image.crossOrigin = "Anonymous";
-    image.onload = () => {
+    image.onload = () => {      
+
       const TARGET = px(60);
       cover.scaleX = TARGET / image.width;
       cover.scaleY = TARGET / image.height;
+
+      const BG_TARGET = px(Math.max(window.innerHeight, window.innerWidth)) * 1.1;
+      backgroundCover.scaleX = BG_TARGET / image.width;
+      backgroundCover.scaleY = BG_TARGET / image.height;
+
       const thief = new ColorThief();
       // find color with highest saturation and use it
       const colors = [thief.getColor(image), ...thief.getPalette(image)];
@@ -313,6 +352,9 @@ function updateSong(song: TSong | null) {
       }, 1000);
     };
     cover.image = image;
+    createjs.Tween.get(backgroundCover).to({alpha: 0}, 2000).call(() => {
+      backgroundCover.image = image;
+    }).to({alpha: 0.05}, 2000);
   }
   if (song?.progress_ms !== lastSong?.progress_ms) {
     lastSong = song;
@@ -320,6 +362,7 @@ function updateSong(song: TSong | null) {
   } else {
     lastSong = song;
   }
+  clipText();
 }
 
 type TLyricObjects = {
@@ -372,7 +415,7 @@ function float(text: createjs.Text, offset: number, index: number) {
   }
 }
 function renderLyrics(forceUpdate: boolean = false) {
-  const anim = forceUpdate ? 1 : LYRIC_ANIM;
+  let anim = forceUpdate ? 1 : LYRIC_ANIM;
 
   if (nextLyricTick != null) {
     clearTimeout(nextLyricTick);
@@ -408,6 +451,10 @@ function renderLyrics(forceUpdate: boolean = false) {
       () => renderLyrics(),
       (lyrics[lyricIndex + 1].timestamp - currentTime) * 1000
     );
+    anim = Math.min(
+      anim,
+      (lyrics[lyricIndex + 1].timestamp - lyrics[lyricIndex].timestamp) * 1000
+    );
   }
 
   const newLyrics: TLyricObjects = [];
@@ -432,7 +479,7 @@ function renderLyrics(forceUpdate: boolean = false) {
         newLyrics.push(obj);
       } else {
         const content =
-          lyric.content.trim() === "" ? "..." : lyric.content.trim();
+          lyric.content.trim() === "" ? "♫ ♪ ♬" : lyric.content.trim();
         const text = new createjs.Text();
         formatLyric(content, text);
         const style = getLyricPosition(content, offset + 1);
