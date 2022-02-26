@@ -210,7 +210,7 @@ function init() {
   window.addEventListener("resize", onResize);
   onResizeImpl();
 
-  createjs.Ticker.framerate = 120;
+  createjs.Ticker.framerate = 60;
   createjs.Ticker.addEventListener("tick", stage);
   createjs.Ticker.addEventListener("tick", () => {
     if (bgAnim) background.updateCache();
