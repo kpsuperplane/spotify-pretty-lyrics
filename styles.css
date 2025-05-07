@@ -1,0 +1,157 @@
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+html {
+  background-color: #111;
+  font-family: Cabin, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell,
+    "Open Sans", "Helvetica Neue", sans-serif;
+  color: white;
+  --size: max(100vw, 100vh);
+}
+#song {
+  background: black;
+  background: var(--colorA);
+  padding-top: 144px;
+  transition: all 200ms;
+}
+.content {
+  margin: 0 auto;
+  max-width: 800px;
+  padding-inline: 16px;
+}
+#song-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  backdrop-filter: blur(32px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100vw;
+  z-index: 2;
+}
+#song-header-content {
+  gap: 16px;
+  padding-block: 16px;
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+}
+#song-header-image {
+  height: 96px;
+  width: 96px;
+  border-radius: 12px;
+  flex: 0;
+}
+#song-header-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#song-header-text h2 {
+  color: #fff;
+  font-size: 32px;
+  font-weight: 400;
+  margin: 0;
+  line-height: 1;
+  padding: 0;
+}
+#song-header-text h3 {
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+  font-weight: 400;
+}
+#lyrics {
+  color: rgba(255, 255, 255, 1);
+  font-size: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+  margin-inline: -16px;
+  position: relative;
+}
+.lyric {
+  transition: all min(var(--duration), 2s) ease;
+  transform: scale(1);
+  transform-origin: 0% 100%;
+  position: relative;
+  margin: 0px 0px;
+}
+.lyric.active {
+  font-weight: 600;
+  transform: scale(1.3);
+  margin: 32px 0px;
+}
+
+.lyric .background {
+  opacity: 0.5;
+  padding: 16px;
+}
+
+@property --wipe-position {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+.lyric .highlight {
+  --wipe-position: calc(-1 * var(--gradient-length));
+  --gradient-length: 5%;
+  mask-image: linear-gradient(
+    to right,
+    black var(--wipe-position),
+    transparent calc(var(--wipe-position) + var(--gradient-length)),
+    transparent
+  );
+  transition: --wipe-position var(--duration) cubic-bezier(0.37, 0, 0.63, 1),
+    opacity min(var(--duration), 2s) ease;
+
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  padding: 16px;
+  text-shadow: 0px 0px 12px rgba(255, 255, 255, 0.8);
+  opacity: 0;
+}
+
+.lyric.active .highlight {
+  --wipe-position: calc(100% + var(--gradient-length));
+  opacity: 1;
+}
+
+@keyframes orbit {
+  from {  -webkit-transform: rotate(0deg) translateX(calc(var(--size) * 0.3)) rotate(0deg); }
+  to   {  -webkit-transform: rotate(360deg) translateX(calc(var(--size) * 0.3)) rotate(-360deg); }
+}
+
+.circle {
+  background: radial-gradient(circle at center, var(--color) 0, transparent 60%);
+  height: calc(var(--size) * 1.5);
+  width: calc(var(--size) * 1.5);
+  position: fixed;
+  animation: orbit 30s forwards infinite;
+  animation-timing-function: linear;
+  transition: all 4s;
+}
+
+#circleA {
+  top: calc(var(--size) * -0.5);
+  left: calc(var(--size) * -0.8);
+  animation-delay: 0s;
+}
+
+#circleB {
+  top: calc(var(--size) * -0.1);
+  left: calc(var(--size) * 0.5);
+  animation-delay: -10s;
+}
+
+#circleC {
+  top: calc(var(--size) * -0.8);
+  left: calc(var(--size) * -0.4);
+  animation-delay: -20s;
+}
