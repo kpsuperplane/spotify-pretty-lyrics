@@ -90,7 +90,7 @@ export default function Lyric({ lyric, song }: { lyric: Lyric; song: Song }) {
                 lines: [
                   ...lines,
                   {
-                    start,
+                    start: Math.max(0, start - 500),
                     text,
                     end,
                   },
