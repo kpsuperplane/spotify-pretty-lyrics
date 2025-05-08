@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Song } from ".";
+import { extractLines } from "../lib/extractLines";
 
 function ease(x: number): number {
   return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
 }
 
-function smoothScroll(y: number) {
+function smoothScroll(y: number, duration: number) {
   const startingY = window.scrollY;
   const diff = y - startingY;
-  const duration = 1000;
   let start: number | null = null;
 
   // Bootstrap our animation - it will get called right before next frame shall be rendered.
@@ -61,10 +61,50 @@ export default function Lyric({ lyric, song }: { lyric: Lyric; song: Song }) {
             0,
             top + window.scrollY + height / 2 - window.innerHeight / 2
           )
-        )
+        ),
+        Math.min(1000, (lyric.end - lyric.start) / 2)
       );
     }
   }, [isActive]);
+
+
+  const duration = lyric.end - lyric.start;
+  const [lines, setLines] = useState<Lyric[]>([
+    { start: 0, end: duration - (Math.min(duration * 0.2, 750)), text: lyric.text },
+  ]);
+
+  useEffect(() => {
+    if (lines.length === 1) {
+      const actualLines = extractLines(
+        ref.current!.querySelector(".background")!.firstChild!
+      );
+      if (actualLines.length > 1) {
+        const { start, end: totalDuration, text } = lines[0];
+        const totalLength = text.length;
+        setLines(
+          actualLines.reduce<{ lines: Lyric[]; start: number }>(
+            ({ lines, start }, text) => {
+              const duration = (text.length / totalLength) * totalDuration;
+              const end = start + duration;
+              return {
+                lines: [
+                  ...lines,
+                  {
+                    start,
+                    text,
+                    end,
+                  },
+                ],
+                start: end,
+              };
+            },
+            { lines: [], start }
+          ).lines
+        );
+      }
+    }
+  }, [lines]);
+
   return (
     <div
       className={`lyric${isActive ? " active" : ""}`}
@@ -73,17 +113,21 @@ export default function Lyric({ lyric, song }: { lyric: Lyric; song: Song }) {
       }
       ref={ref}
     >
-      <div className="background">{lyric.text}</div>
-      <div
-        className="highlight"
-        style={
-          {
-            "--duration": `${lyric.end - lyric.start}ms`,
-          } as React.CSSProperties
-        }
-      >
-        {lyric.text}
-      </div>
+      {lines.map((line) => (
+        <div
+          className="line"
+          key={line.start}
+          style={
+            {
+              "--start-delay": `${line.start}ms`,
+              "--duration": `${line.end - line.start}ms`,
+            } as React.CSSProperties
+          }
+        >
+          <div className="background">{line.text}</div>
+          <div className="highlight">{line.text}</div>
+        </div>
+      ))}
     </div>
   );
 }
