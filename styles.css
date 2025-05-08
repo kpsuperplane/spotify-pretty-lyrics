@@ -127,14 +127,8 @@ html {
   opacity: 0;
 }
 
-.lyric .line:first-child {
-  transition-timing-function: cubic-bezier(0.12, 0, 0.39, 0), ease-in;
-}
 .lyric .line:last-child {
   transition-timing-function: cubic-bezier(0.61, 1, 0.88, 1), ease-out;
-}
-.lyric .line:first-child:last-child {
-  transition-timing-function: cubic-bezier(0.37, 0, 0.63, 1), ease;
 }
 
 .lyric.active .highlight {
