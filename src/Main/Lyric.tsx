@@ -70,7 +70,7 @@ export default function Lyric({ lyric, song }: { lyric: Lyric; song: Song }) {
 
   const duration = lyric.end - lyric.start;
   const [lines, setLines] = useState<Lyric[]>([
-    { start: 0, end: duration - (Math.min(duration * 0.2, 750)), text: lyric.text },
+    { start: 0, end: duration - (Math.min(duration * 0.1, 250)), text: lyric.text },
   ]);
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function Lyric({ lyric, song }: { lyric: Lyric; song: Song }) {
                 lines: [
                   ...lines,
                   {
-                    start: Math.max(0, start - 500),
+                    start: Math.max(0, start - 300),
                     text,
                     end,
                   },
