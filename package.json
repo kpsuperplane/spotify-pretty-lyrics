@@ -3,7 +3,8 @@
   "module": "index.html",
   "type": "module",
   "scripts": {
-    "start": "bun index.html"
+    "start": "bun index.html",
+    "build": "bun build --outdir=build index.html"
   },
   "devDependencies": {
     "@types/react": "^19.1.3",
