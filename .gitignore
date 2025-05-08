@@ -126,7 +126,7 @@ dist
 
 # https://nextjs.org/blog/next-9-1#public-directory-support
 
-# public
+public
 
 # vuepress build output
 
@@ -173,5 +173,3 @@ dist
 
 # Finder (MacOS) folder config
 .DS_Store
-
-build
